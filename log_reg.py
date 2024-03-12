@@ -1,5 +1,4 @@
 #%% read in libs 
-
 #general
 import pandas as pd 
 
@@ -18,15 +17,15 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-#%% load data
-df = pd.read_excel(r'./data/full_data_set.xlsx')
-df.head()
-df["NFL Draft Pick"].value_counts()
-#%%
+#custom functions for data cleaning
+from utils import CleanData
 
-# Convert 'NFL Draft Pick' to a binary variable where 'Yes' = 1 and 'No' = 0
-df['NFL Draft Pick'] = df['NFL Draft Pick'].map({'Yes': 1, 'No': 0})
-df['NFL Draft Pick'].value_counts()
+#%% load data & pre-process using customer CleanData class
+df = pd.read_excel(r'./data/full_data_set.xlsx')
+cleaner = CleanData(df)
+df = cleaner.convert_draft_pick()
+df = cleaner.fill_na(0)
+
 #%%
 # Define the feature columns (all columns you've listed except 'NFL Draft Pick')
 feature_cols = ['Height (inches) (247)', 'Weight (247)', 'GP - Senior (Rush)', 'Car - Senior (Rush)', 'Yds - Senior (Rush)', 'Avg - Senior (Rush)', 'Y/G - Senior (Rush)', 'Lng - Senior (Rush)', '100+ - Senior (Rush)', 'TD - Senior (Rush)', 'GP - Junior (Rush)', 'Car - Junior (Rush)', 'Yds - Junior (Rush)', 'Avg - Junior (Rush)', 'Y/G - Junior (Rush)', 'Lng - Junior (Rush)', '100+ - Junior (Rush)', 'TD - Junior (Rush)', 'GP - Sophomore (Rush)', 'Car - Sophomore (Rush)', 'Yds - Sophomore (Rush)', 'Avg - Sophomore (Rush)', 'Y/G - Sophomore (Rush)', 'Lng - Sophomore (Rush)', '100+ - Sophomore (Rush)', 'TD - Sophomore (Rush)', 'GP - Freshman (Rush)', 'Car - Freshman (Rush)', 'Yds - Freshman (Rush)', 'Avg - Freshman (Rush)', 'Y/G - Freshman (Rush)', 'Lng - Freshman (Rush)', '100+ - Freshman (Rush)', 'TD - Freshman (Rush)', 'GP - Senior (Rec)', 'Rec - Senior', 'Yds - Senior (Rec)', 'Avg - Senior (Rec)', 'Y/G - Senior (Rec)', 'Lng - Senior (Rec)', 'TD - Senior (Rec)', 'GP - Junior (Rec)', 'Rec - Junior', 'Yds - Junior (Rec)', 'Avg - Junior (Rec)', 'Y/G - Junior (Rec)', 'Lng - Junior (Rec)', 'TD - Junior (Rec)', 'GP - Sophomore (Rec)', 'Rec - Sophomore', 'Yds - Sophomore (Rec)', 'Avg - Sophomore (Rec)', 'Y/G - Sophomore (Rec)', 'Lng - Sophomore (Rec)', 'TD - Sophomore (Rec)', 'GP - Freshman (Rec)', 'Rec - Freshman', 'Yds - Freshman (Rec)', 'Avg - Freshman (Rec)', 'Y/G - Freshman (Rec)', 'Lng - Freshman (Rec)', 'TD - Freshman (Rec)']
@@ -41,7 +40,6 @@ vif_data["feature"] = X.columns
 
 # Ensure X is your features DataFrame without the constant
 X_vif = df[feature_cols]  
-X_vif.fillna(0, inplace=True)  
 #%%
 
 # Add constant for intercept (as needed for statsmodels)
