@@ -3,11 +3,12 @@
 import pandas as pd 
 
 #sci-kit learn
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import confusion_matrix, roc_curve, auc
+from sklearn.pipeline import Pipeline
 
 # finding multicollinearity
 import statsmodels.api as sm
@@ -26,14 +27,17 @@ cleaner = CleanData(df)
 df = cleaner.convert_draft_pick()
 df = cleaner.fill_na(0)
 
-#%%
+
 # Define the feature columns (all columns you've listed except 'NFL Draft Pick')
 feature_cols = ['Height (inches) (247)', 'Weight (247)', 'GP - Senior (Rush)', 'Car - Senior (Rush)', 'Yds - Senior (Rush)', 'Avg - Senior (Rush)', 'Y/G - Senior (Rush)', 'Lng - Senior (Rush)', '100+ - Senior (Rush)', 'TD - Senior (Rush)', 'GP - Junior (Rush)', 'Car - Junior (Rush)', 'Yds - Junior (Rush)', 'Avg - Junior (Rush)', 'Y/G - Junior (Rush)', 'Lng - Junior (Rush)', '100+ - Junior (Rush)', 'TD - Junior (Rush)', 'GP - Sophomore (Rush)', 'Car - Sophomore (Rush)', 'Yds - Sophomore (Rush)', 'Avg - Sophomore (Rush)', 'Y/G - Sophomore (Rush)', 'Lng - Sophomore (Rush)', '100+ - Sophomore (Rush)', 'TD - Sophomore (Rush)', 'GP - Freshman (Rush)', 'Car - Freshman (Rush)', 'Yds - Freshman (Rush)', 'Avg - Freshman (Rush)', 'Y/G - Freshman (Rush)', 'Lng - Freshman (Rush)', '100+ - Freshman (Rush)', 'TD - Freshman (Rush)', 'GP - Senior (Rec)', 'Rec - Senior', 'Yds - Senior (Rec)', 'Avg - Senior (Rec)', 'Y/G - Senior (Rec)', 'Lng - Senior (Rec)', 'TD - Senior (Rec)', 'GP - Junior (Rec)', 'Rec - Junior', 'Yds - Junior (Rec)', 'Avg - Junior (Rec)', 'Y/G - Junior (Rec)', 'Lng - Junior (Rec)', 'TD - Junior (Rec)', 'GP - Sophomore (Rec)', 'Rec - Sophomore', 'Yds - Sophomore (Rec)', 'Avg - Sophomore (Rec)', 'Y/G - Sophomore (Rec)', 'Lng - Sophomore (Rec)', 'TD - Sophomore (Rec)', 'GP - Freshman (Rec)', 'Rec - Freshman', 'Yds - Freshman (Rec)', 'Avg - Freshman (Rec)', 'Y/G - Freshman (Rec)', 'Lng - Freshman (Rec)', 'TD - Freshman (Rec)']
 
-#%% ------- check for multicollinearity + select features ------------------
 # Split the dataset into features (X) and target variable (y)
 X = df[feature_cols]
 y = df['NFL Draft Pick']
+
+#%% ------- check for multicollinearity + select features ------------------
+
+#%%
 
 vif_data = pd.DataFrame()
 vif_data["feature"] = X.columns
@@ -68,7 +72,7 @@ print(f"There are {len(X_filtered.columns)} features with VIF < 10.")
 
 X_significant = X_filtered
 #%%  -------------- first pass to select features with low multicollinearity and ID potential features
-X_train, X_test, y_train, y_test = train_test_split(X_filtered, y, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_significant, y, test_size=0.3, random_state=42)
 
 # Standardize the features 
 scaler = StandardScaler()
@@ -100,93 +104,113 @@ X_significant = X_filtered[significant_features_names]
 
 print("Significant features based on p-values:", significant_features_names)
 
+#reset X_significant back to X for the next steps
+X = X_significant
 
 #%% ---------------- Run RIDGE and LASSO models on only significant features
 
 # Changing the X alters results below (can do full X, X with VIF > 10, X VIF> 10 AND pvalue < 0.05)
-
+#%%
 # Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X_significant, y, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-# Standardize the features 
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+# Define a pipeline that includes scaling and the model
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('model', LogisticRegression(solver='liblinear'))
+])
 
-# Train a logistic regression model with Ridge
-ridge_model = LogisticRegression(penalty='l2', solver='liblinear')
-ridge_model.fit(X_train_scaled, y_train)
-y_pred_ridge = ridge_model.predict(X_test_scaled)
+# Define the grid of parameters to search over
+param_grid = [
+    {
+        'model__penalty': ['l2'],
+        'model__C': [0.01, 0.1, 1, 10, 100],
+        'model__solver': ['lbfgs', 'sag'],  # Including 'lbfgs' as an alternative
+        'model__max_iter': [200, 300, 400],  # Increased max_iter values
+        'model__tol': [1e-4, 1e-3],  # Adjusting tolerance
+        'model__class_weight': [None, 'balanced']
+    },
+    {
+        'model__penalty': ['l1'],
+        'model__C': [0.01, 0.1, 1, 10, 100],
+        'model__solver': ['saga'],  # 'saga' supports L1 penalty
+        'model__max_iter': [200, 300, 400],  # Similarly increased
+        'model__tol': [1e-4, 1e-3],
+        'model__class_weight': [None, 'balanced']
+    }
+]
 
-# Evaluate the Ridge model
-print("Ridge Model Accuracy:", accuracy_score(y_test, y_pred_ridge))
-print(classification_report(y_test, y_pred_ridge))
+# Initialize the grid search with cross-validation
+grid_search = GridSearchCV(pipeline, param_grid, cv=10, scoring='accuracy')
 
-# Train a logistic regression model with LASSO 
-lasso_model = LogisticRegression(penalty='l1', solver='liblinear')
-lasso_model.fit(X_train_scaled, y_train)
-y_pred_lasso = lasso_model.predict(X_test_scaled)
+# Fit the grid search to the data
+grid_search.fit(X_train, y_train)
 
-# Evaluate the LASSO model
-print("LASSO Model Accuracy:", accuracy_score(y_test, y_pred_lasso))
-print(classification_report(y_test, y_pred_lasso))
+# Print the best parameters and the best score
+print("Best parameters:", grid_search.best_params_)
+print("Best cross-validation score:", grid_search.best_score_)
 
-#%% Understand which features are important in Ridge v LASSO 
-# Extract feature names and coefficients for both models
-ridge_coefficients = ridge_model.coef_[0]
-lasso_coefficients = lasso_model.coef_[0]
-feature_names = X_significant.columns
+# setup best model for predictions
+best_model = grid_search.best_estimator_
 
-# Create DataFrames for easy viewing
-ridge_df = pd.DataFrame({'Feature': feature_names, 'Coefficient': ridge_coefficients})
-lasso_df = pd.DataFrame({'Feature': feature_names, 'Coefficient': lasso_coefficients})
-
-# Sort the coefficients by their absolute values for better interpretation
-ridge_df = ridge_df.reindex(ridge_df.Coefficient.abs().sort_values(ascending=False).index)
-lasso_df = lasso_df.reindex(lasso_df.Coefficient.abs().sort_values(ascending=False).index)
-
-# Print the sorted DataFrames
-print("Ridge Model Coefficients:")
-print(ridge_df, "\n")
-print("LASSO Model Coefficients (non-zero):")
-print(lasso_df[lasso_df['Coefficient'] != 0])
-
-#%%
-# Confusion Matrices
-conf_matrix_ridge = confusion_matrix(y_test, y_pred_ridge)
-conf_matrix_lasso = confusion_matrix(y_test, y_pred_lasso)
-def plot_confusion_matrix(cm, title='Confusion Matrix', labels=['Not Drafted', 'Drafted']):
-    plt.figure(figsize=(6,4))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, xticklabels=labels, yticklabels=labels)
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title(title)
-
-# Plotting Ridge Model Confusion Matrix
-plot_confusion_matrix(conf_matrix_ridge, title='Ridge Model Confusion Matrix')
-
-# Plotting Lasso Model Confusion Matrix
-plot_confusion_matrix(conf_matrix_lasso, title='Lasso Model Confusion Matrix')
-
-plt.show()
+# Make predictions 
+y_pred = best_model.predict(X_test)
 
 #%%
-# ROC Curve and AUC for Ridge Model
-fpr_ridge, tpr_ridge, thresholds_ridge = roc_curve(y_test, ridge_model.predict_proba(X_test_scaled)[:, 1])
-auc_ridge = auc(fpr_ridge, tpr_ridge)
+# Calculate overall accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy:.3f}")
 
-# ROC Curve and AUC for Lasso Model
-fpr_lasso, tpr_lasso, thresholds_lasso = roc_curve(y_test, lasso_model.predict_proba(X_test_scaled)[:, 1])
-auc_lasso = auc(fpr_lasso, tpr_lasso)
+# Generate a classification report
+report = classification_report(y_test, y_pred, target_names=['Undrafted', 'Drafted'])  # Adjust class names as necessary
+print(report)
 
-# Plotting ROC Curves
+# Predicted probabilities for confusion matrix and ROC curve
+y_pred_proba = best_model.predict_proba(X_test)[:, 1]
+
+# Confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+plot_confusion_matrix(conf_matrix, title='Best Model Confusion Matrix')
+
+# ROC curve and AUC
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+roc_auc = auc(fpr, tpr)
+
+# Plotting ROC Curve
 plt.figure(figsize=(8, 6))
-plt.plot(fpr_ridge, tpr_ridge, label=f'Ridge AUC = {auc_ridge:.2f}')
-plt.plot(fpr_lasso, tpr_lasso, label=f'Lasso AUC = {auc_lasso:.2f}')
-plt.plot([0, 1], [0, 1], 'k--')  # Dashed diagonal for random chance
+plt.plot(fpr, tpr, label=f'Best Model AUC = {roc_auc:.2f}')
+plt.plot([0, 1], [0, 1], 'k--')  # Dashed diagonal
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
-plt.title('ROC Curve for Ridge and Lasso Models')
+plt.title('ROC Curve for the Best Model')
 plt.legend(loc='lower right')
 plt.show()
+
+#%% show the best features
+import numpy as np
+best_logreg_model = grid_search.best_estimator_.named_steps['model']
+feature_names = X.columns  # Adjust if your feature matrix X isn't a DataFrame
+
+# Extract coefficients
+coefficients = best_logreg_model.coef_[0]
+
+# Match coefficients to feature names
+features_coefficients = zip(feature_names, coefficients)
+
+# Sort features by absolute value of coefficient
+sorted_features_coefficients = sorted(features_coefficients, key=lambda x: np.abs(x[1]), reverse=True)[:10]
+
+# Separate feature names and their corresponding coefficients
+sorted_features, sorted_coefficients = zip(*sorted_features_coefficients)
+
+# Visualize feature importance
+plt.figure(figsize=(10, 8))
+plt.barh(range(len(sorted_features)), sorted_coefficients, align='center')
+plt.yticks(range(len(sorted_features)), sorted_features)
+plt.gca().invert_yaxis()  # Invert y-axis to have the most important feature on top
+plt.xlabel('Coefficient Magnitude')
+plt.ylabel('Feature')
+plt.title('Feature Importance in NFL Prediction')
+plt.show()
+
 # %%
