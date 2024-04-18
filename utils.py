@@ -6,15 +6,15 @@ import pandas as pd
 # clean data CLASS 
 
 class CleanData:
-    def __init__(self, data):
-        self.data = data
+    #def __init__(self, data):
+    #    self.data = data
     
-    def convert_draft_pick(self):
-        self.data['NFL Draft Pick'] = self.data['NFL Draft Pick'].map({'Yes': 1, 'No': 0})
-        return self.data
+    def convert_draft_pick(data):
+        data['NFL Draft Pick'] = data['NFL Draft Pick'].map({'Yes': 1, 'No': 0})
+        return data
     
-    def fill_na(self, value):
-        self.data.fillna(value, inplace=True)
-        return self.data
+    def fill_na(data, value):
+        data.fillna(value, inplace=True)
+        return data
     
 
