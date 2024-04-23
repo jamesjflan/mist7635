@@ -4,3 +4,4 @@ map/
 .venv/
 venv/
 __pycache__/
+spacy_test.py
