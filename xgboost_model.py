@@ -13,29 +13,6 @@ import matplotlib.pyplot as plt
 # custom libs 
 from utils import CleanData
 
-# show relationship between features and target 
-
-class Preprocessor:
-    def __init__(self, n_components=None):
-        self.scaler = StandardScaler()
-        self.pca = PCA(n_components=n_components)
-    
-    # do PCA
-    def fit_transform(self, X):
-        X_scaled = self.scaler.fit_transform(X)
-        if self.pca.n_components is not None:
-            X_pca = self.pca.fit_transform(X_scaled)
-            return X_pca
-        return X_scaled
-    
-    # scale features 
-    def transform(self, X):
-        X_scaled = self.scaler.transform(X)
-        if self.pca.n_components is not None:
-            X_pca = self.pca.transform(X_scaled)
-            return X_pca
-        return X_scaled
-
 class EvalCallback(TrainingCallback):
     """Custom callback to record evaluation results per iteration."""
     def __init__(self, evals_result):
@@ -53,7 +30,7 @@ class EvalCallback(TrainingCallback):
         return False
 
 class ModelTrainer:
-    def __init__(self, params_grid, cv=5, scoring='roc_auc'):
+    def __init__(self, params_grid, cv=5, scoring='f1'):
         self.pipeline = Pipeline([
             ('scaler', StandardScaler()),
             ('pca', PCA()),
@@ -141,24 +118,23 @@ class ResultsAnalyzer:
 
 #%%
 # Example of how to use these classes
-data = pd.read_excel(r'./data/full_data_set.xlsx')  # Load your data
+df = pd.read_excel(r'./data/cleaned_data_77.xlsx')  # Load your data
 cleaner = CleanData()
-df = cleaner.convert_draft_pick(data)
+# df = cleaner.convert_draft_pick(data)
 df = cleaner.fill_na(df, 0)
 target = "NFL Draft Pick"
 len(df.columns)
 cols = ['NFL Draft Pick', 'Name', 'Hometown', 'State', 'High School']
+df['NFL Draft Pick'].value_counts() 
 
 #%%
 X = df.drop(cols, axis=1).values
 y = df[target].values
 
 # splitting full data 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Separate training and validation sets from X_train for train cycle
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=24)
-
+#%%
 # Model training
 params_grid = {
     'pca__n_components': [None, 5, 10, 20],  # Include None to test without PCA

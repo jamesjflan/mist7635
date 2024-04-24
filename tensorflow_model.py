@@ -68,15 +68,14 @@ class ResultsAnalyzer:
 
 #%% Load and preprocess data
 # Replace 'path_to_your_data.csv' and column names according to your dataset specifics
-data = pd.read_excel(r'./data/full_data_set.xlsx')
+df = pd.read_excel(r'./data/cleaned_data_77.xlsx')
 df = data.fillna(0)  # Simplified cleaning for example purposes
 target = "NFL Draft Pick"
 cols = ['NFL Draft Pick', 'Name', 'Hometown', 'State', 'High School']
 cleaner = CleanData()
-y = cleaner.convert_draft_pick(df)
+#y = cleaner.convert_draft_pick(df)
 X = df.drop(cols, axis=1).values
 y = df[target].values
-#%%
 #%%
 
 # Scale features
@@ -100,7 +99,7 @@ param_grid = {
 }
 
 # Setup GridSearchCV
-grid = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='accuracy', verbose=1)
+grid = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='f1', verbose=1)
 grid_result = grid.fit(X_train, y_train)
 
 # Best parameters and best score
@@ -118,31 +117,6 @@ print("Misclassification Rate (MCR):", analyzer.MCR())
 print("Confusion Matrix:\n", analyzer.ConfusionMatrix())
 analyzer.PrecisionRecallF1()
 print("AUC:", analyzer.plotROC())
-
-
-# # Confusion Matrix
-# cm = confusion_matrix(y_test, y_pred)
-# disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-# disp.plot()
-# plt.show()
-
-# # Misclassification Rate (MCR)
-# mcr = np.mean(y_pred != y_test)
-# print(f"Misclassification Rate (MCR): {mcr:.2f}")
-
-# # ROC Curve and AUC
-# fpr, tpr, _ = roc_curve(y_test, y_scores)
-# roc_auc = auc(fpr, tpr)
-# plt.figure()
-# plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
-# plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-# plt.xlim([0.0, 1.0])
-# plt.ylim([0.0, 1.05])
-# plt.xlabel('False Positive Rate')
-# plt.ylabel('True Positive Rate')
-# plt.title('Receiver Operating Characteristic')
-# plt.legend(loc="lower right")
-# plt.show()
 
 
 # %%

@@ -1,4 +1,4 @@
-#%% read in libs 
+#%% read in libs ""
 
 import pandas as pd
 import numpy as np
@@ -16,11 +16,14 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, ConfusionMatrixDis
 from utils import CleanData
 
 # Load data & pre-process using custom CleanData class
-df = pd.read_excel('./data/full_data_set.xlsx')
+df = pd.read_excel('./data/cleaned_data_77.xlsx')
 cleaner = CleanData()
-df = cleaner.convert_draft_pick(df)
+#df = cleaner.convert_draft_pick(df)
 df = cleaner.fill_na(df, 0)
-
+df["NFL Draft Pick"].value_counts()
+#%%
+df.head()
+#%%
 # Define the feature columns (assuming these are correct and complete)
 feature_cols = [col for col in df.columns if col not in ['NFL Draft Pick', 'Name', 'Hometown', 'State', 'High School']]
 
@@ -55,7 +58,7 @@ print("Best cross-validation score: {:.2f}".format(grid_search.best_score_))
 # Predictions with the best found parameters
 y_pred = grid_search.predict(X_test)
 y_scores = grid_search.decision_function(X_test)  # Scores for ROC curve
-
+#%%
 # Confusion Matrix
 cm = confusion_matrix(y_test, y_pred)
 disp = ConfusionMatrixDisplay(confusion_matrix=cm)
@@ -80,7 +83,7 @@ plt.title('Receiver Operating Characteristic')
 plt.legend(loc="lower right")
 plt.show()
 
-#%%
+#
 mcr = np.mean(y_pred != y_test)
 print(f"Misclassification Rate (MCR): {mcr:.2f}")
 # %%
