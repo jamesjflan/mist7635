@@ -67,29 +67,25 @@ class ResultsAnalyzer:
         return roc_auc
 
 #%% Load and preprocess data
-# Replace 'path_to_your_data.csv' and column names according to your dataset specifics
 df = pd.read_excel(r'./data/cleaned_data_77.xlsx')
-df = data.fillna(0)  # Simplified cleaning for example purposes
+df = data.fillna(0)  
 target = "NFL Draft Pick"
 cols = ['NFL Draft Pick', 'Name', 'Hometown', 'State', 'High School']
 cleaner = CleanData()
 #y = cleaner.convert_draft_pick(df)
+
 X = df.drop(cols, axis=1).values
 y = df[target].values
 #%%
 
-# Scale features
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Split data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 input_dim = X_train.shape[1]
 
-# Wrap the model with KerasClassifier
 model = KerasClassifier(model=create_model, verbose=0, learning_rate=0.01, dropout_rate=0.2, num_units=128)
 
-# Define the parameter grid
 param_grid = {
     'learning_rate': [0.001, 0.01],
     'dropout_rate': [0.1, 0.2],
@@ -98,17 +94,15 @@ param_grid = {
     'batch_size': [32, 64]
 }
 
-# Setup GridSearchCV
 grid = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='f1', verbose=1)
 grid_result = grid.fit(X_train, y_train)
 
-# Best parameters and best score
 print("Best parameters:", grid_result.best_params_)
 print("Best cross-validation score: {:.2f}".format(grid_result.best_score_))
 
-# Predictions with the best found parameters
+
 y_pred = grid_result.predict(X_test)
-y_scores = grid_result.predict_proba(X_test)[:, 1]  # get probabilities for the positive class
+y_scores = grid_result.predict_proba(X_test)[:, 1]  
 #%%
 best_model = grid_result.best_estimator_
 
@@ -126,14 +120,13 @@ best_estimator = grid_result.best_estimator_
 keras_model = best_estimator.model_
 #%%
 #%%
-# Now, use SHAP's DeepExplainer (or another appropriate explainer) on the Keras model
-explainer = shap.KernelExplainer(keras_model, X_train[:5])  # Using a subset of X_train for efficiency
+
+explainer = shap.KernelExplainer(keras_model, X_train[:5])  
 shap_values = explainer.shap_values(X_train[:5])
 #%%
 shap_values[:5]
 #%%
-# Since you have used the KerasClassifier, X_test will likely not have a 'columns' attribute.
-# Ensure you have the feature names from your original DataFrame.
+
 feature_names = df.drop(cols, axis=1).columns.tolist()
 feature_names[:5]
 #%%
@@ -141,20 +134,16 @@ feature_names[:5]
 shap.summary_plot(shap_values, X_train[:5], feature_names=feature_names)
 #%%
 # Visualize the first prediction's explanation
-# Here we take the first sample's SHAP values and the first sample from X_train
 shap.force_plot(explainer.expected_value[0], shap_values[0][0], X_train[0], feature_names=feature_names)
 
 # %%
-background = shap.sample(X_train, 5)  # For efficiency, use a sample of the train data
+background = shap.sample(X_train, 5)  
 explainer = shap.KernelExplainer(keras_model.predict, background)
 
-# Calculate SHAP values - this may take some time depending on the complexity of the model and data
 shap_values = explainer.shap_values(X_test[:5])
 
-# Ensure that the feature names are correctly formatted as a list
 feature_names = df.drop(cols, axis=1).columns.tolist()
 
-# Plot the SHAP summary
-# Note: If using a classification model with multiple classes, you may need to adjust this call
+
 shap.summary_plot(shap_values, X_test[:5], feature_names=feature_names)
 # %%

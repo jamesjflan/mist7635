@@ -117,8 +117,7 @@ class ResultsAnalyzer:
         return roc_auc
 
 #%%
-# Example of how to use these classes
-df = pd.read_excel(r'./data/cleaned_data_77.xlsx')  # Load your data
+df = pd.read_excel(r'./data/cleaned_data_77.xlsx')  
 cleaner = CleanData()
 # df = cleaner.convert_draft_pick(data)
 df = cleaner.fill_na(df, 0)
@@ -162,11 +161,6 @@ analyzer.PrecisionRecallF1()
 print("ROC AUC:", analyzer.plotROC())
 
 
-# Need if PCA is used (not in current model)
-# Assuming PCA is part of your pipeline and you've used `n_components`
-# pca_feature_names = [f"Principal Component {i+1}" for i in range(best_pipeline.named_steps['pca'].n_components_)]
-# shap.summary_plot(shap_values, X_test, feature_names=pca_feature_names)
-
 #%%
 import shap 
 tree_model = best_model.named_steps['xgb']
@@ -177,7 +171,6 @@ shap_values = explainer.shap_values(X_test[2:3])
 shap.summary_plot(shap_values, X_test[2:3], feature_names = feature_names, plot_type="bar")
 
 #%%
-# Force plot for a single prediction
 shap.initjs()
 shap.force_plot(explainer.expected_value, shap_values[2], X_test[0], feature_names=feature_names)
 
