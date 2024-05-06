@@ -87,3 +87,20 @@ plt.show()
 mcr = np.mean(y_pred != y_test)
 print(f"Misclassification Rate (MCR): {mcr:.2f}")
 # %%
+best_pipeline = grid_search.best_estimator_
+#best_logreg_model = best_pipeline.named_steps['logreg']
+#%%
+# Get the coefficients of the logistic regression model
+#coefficients = best_logreg_model.coef_
+# %%
+# Get the PCA component if used in the best pipeline
+n_components = best_pipeline.named_steps['pca'].n_components_
+
+if n_components is not None:
+    feature_names = [f'PCA Component {i}' for i in range(n_components)]
+else:
+    feature_names = feature_cols
+
+# %%
+feature_names
+# %%

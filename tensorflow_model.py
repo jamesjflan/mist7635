@@ -46,9 +46,9 @@ class ResultsAnalyzer:
         return cm
 
     def PrecisionRecallF1(self):
-        report = classification_report(self.y_test, self.y_pred, target_names=['Class 0', 'Class 1'], output_dict=True)
+        report = classification_report(self.y_test, self.y_pred, target_names=['Undrafted', 'Drafted'], output_dict=True)
         print("Classification Report:")
-        print(classification_report(self.y_test, self.y_pred, target_names=['Class 0', 'Class 1']))
+        print(classification_report(self.y_test, self.y_pred, target_names=['Undrafted', 'Drafted']))
         return report
 
     def plotROC(self):
@@ -110,7 +110,8 @@ print("Best cross-validation score: {:.2f}".format(grid_result.best_score_))
 y_pred = grid_result.predict(X_test)
 y_scores = grid_result.predict_proba(X_test)[:, 1]  # get probabilities for the positive class
 #%%
-best_model = grid_result
+best_model = grid_result.best_estimator_
+
 
 analyzer = ResultsAnalyzer(best_model, X_test, y_test)
 print("Misclassification Rate (MCR):", analyzer.MCR())
@@ -118,5 +119,42 @@ print("Confusion Matrix:\n", analyzer.ConfusionMatrix())
 analyzer.PrecisionRecallF1()
 print("AUC:", analyzer.plotROC())
 
+#%%
+# %%
+import shap 
+best_estimator = grid_result.best_estimator_
+keras_model = best_estimator.model_
+#%%
+#%%
+# Now, use SHAP's DeepExplainer (or another appropriate explainer) on the Keras model
+explainer = shap.KernelExplainer(keras_model, X_train[:5])  # Using a subset of X_train for efficiency
+shap_values = explainer.shap_values(X_train[:5])
+#%%
+shap_values[:5]
+#%%
+# Since you have used the KerasClassifier, X_test will likely not have a 'columns' attribute.
+# Ensure you have the feature names from your original DataFrame.
+feature_names = df.drop(cols, axis=1).columns.tolist()
+feature_names[:5]
+#%%
+# Plot the SHAP summary
+shap.summary_plot(shap_values, X_train[:5], feature_names=feature_names)
+#%%
+# Visualize the first prediction's explanation
+# Here we take the first sample's SHAP values and the first sample from X_train
+shap.force_plot(explainer.expected_value[0], shap_values[0][0], X_train[0], feature_names=feature_names)
 
+# %%
+background = shap.sample(X_train, 5)  # For efficiency, use a sample of the train data
+explainer = shap.KernelExplainer(keras_model.predict, background)
+
+# Calculate SHAP values - this may take some time depending on the complexity of the model and data
+shap_values = explainer.shap_values(X_test[:5])
+
+# Ensure that the feature names are correctly formatted as a list
+feature_names = df.drop(cols, axis=1).columns.tolist()
+
+# Plot the SHAP summary
+# Note: If using a classification model with multiple classes, you may need to adjust this call
+shap.summary_plot(shap_values, X_test[:5], feature_names=feature_names)
 # %%

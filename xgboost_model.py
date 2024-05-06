@@ -128,6 +128,10 @@ cols = ['NFL Draft Pick', 'Name', 'Hometown', 'State', 'High School']
 df['NFL Draft Pick'].value_counts() 
 
 #%%
+# capture col names for Shapley values
+football_players = df[["Name", "NFL Draft Pick"]]
+feature_names = df.drop(cols, axis=1).columns.tolist()
+#%%
 X = df.drop(cols, axis=1).values
 y = df[target].values
 
@@ -156,4 +160,27 @@ print("MCR:", analyzer.MCR())
 print("Confusion Matrix:\n", analyzer.ConfusionMatrix())
 analyzer.PrecisionRecallF1()
 print("ROC AUC:", analyzer.plotROC())
+
+
+# Need if PCA is used (not in current model)
+# Assuming PCA is part of your pipeline and you've used `n_components`
+# pca_feature_names = [f"Principal Component {i+1}" for i in range(best_pipeline.named_steps['pca'].n_components_)]
+# shap.summary_plot(shap_values, X_test, feature_names=pca_feature_names)
+
+#%%
+import shap 
+tree_model = best_model.named_steps['xgb']
+
+# Create a SHAP TreeExplainer for the XGBoost model
+explainer = shap.TreeExplainer(tree_model)
+shap_values = explainer.shap_values(X_test[2:3])
+shap.summary_plot(shap_values, X_test[2:3], feature_names = feature_names, plot_type="bar")
+
+#%%
+# Force plot for a single prediction
+shap.initjs()
+shap.force_plot(explainer.expected_value, shap_values[2], X_test[0], feature_names=feature_names)
+
+# %%
+football_players[2:3]
 # %%
